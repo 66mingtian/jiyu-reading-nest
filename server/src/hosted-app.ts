@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { READING_NEST_APP_VERSION } from "@ss/shared";
-import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
+import express, {
+  type NextFunction,
+  type Request as ExpressRequest,
+  type Response as ExpressResponse
+} from "express";
 import { createReaderWidgetHtml } from "./mcp/reader-widget.js";
 import { createMcpServerFromRepository } from "./mcp/server-factory.js";
 import { sanitizeBookshelfBundle } from "./privacy/sanitize-bookshelf.js";
@@ -21,10 +24,14 @@ type TransportMap = Record<string, StreamableHTTPServerTransport>;
 export type HostedAppOptions = {
   mcpPathToken?: string;
   dataRoot?: string;
+  allowedHosts?: string[];
 };
 
 export function createHostedApp(options: HostedAppOptions) {
-  const app = createMcpExpressApp({ host: "0.0.0.0", jsonLimit: "30mb" });
+  const app = express();
+  app.disable("x-powered-by");
+  app.set("trust proxy", 1);
+  app.use(express.json({ limit: "30mb" }));
   const transports: TransportMap = {};
   const ready = Boolean(options.mcpPathToken && options.dataRoot);
   const repository = options.dataRoot
@@ -50,6 +57,10 @@ export function createHostedApp(options: HostedAppOptions) {
   });
 
   app.use(async (request, response) => {
+    if (!isAllowedHost(request, options.allowedHosts)) {
+      response.status(403).send("Forbidden");
+      return;
+    }
     const requestUrl = getPublicUrl(request);
     const route = getWorkerRoute(requestUrl, options.mcpPathToken);
 
@@ -120,6 +131,15 @@ export function createHostedApp(options: HostedAppOptions) {
       if (!response.headersSent) response.status(500).send("Internal server error");
     }
   });
+
+  app.use(
+    (error: unknown, _request: ExpressRequest, response: ExpressResponse, _next: NextFunction) => {
+      const status = readHttpErrorStatus(error);
+      response.status(status).json({
+        error: status === 413 ? "Request body too large" : "Invalid request body"
+      });
+    }
+  );
 
   return app;
 }
@@ -201,6 +221,24 @@ function getPublicUrl(request: ExpressRequest): URL {
 
 function firstHeader(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function isAllowedHost(request: ExpressRequest, allowedHosts: string[] | undefined): boolean {
+  if (!allowedHosts?.length) return true;
+  const host = firstHeader(request.headers["x-forwarded-host"]) ?? request.headers.host;
+  if (!host) return false;
+  try {
+    const hostname = new URL(`http://${host.split(",")[0]?.trim()}`).hostname;
+    return allowedHosts.includes(hostname);
+  } catch {
+    return false;
+  }
+}
+
+function readHttpErrorStatus(error: unknown): number {
+  if (!error || typeof error !== "object") return 400;
+  const status = "status" in error ? Number(error.status) : 400;
+  return status === 413 ? 413 : 400;
 }
 
 function toFetchRequest(request: ExpressRequest, url: URL): Request {

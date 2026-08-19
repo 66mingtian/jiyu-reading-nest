@@ -10,7 +10,13 @@ const dataRoot = railwayRuntime
 const app = hostedRuntime
   ? createHostedApp({
       mcpPathToken: process.env.MCP_PATH_TOKEN,
-      dataRoot: dataRoot ?? (railwayRuntime ? undefined : "data")
+      dataRoot: dataRoot ?? (railwayRuntime ? undefined : "data"),
+      allowedHosts: [
+        process.env.RAILWAY_PUBLIC_DOMAIN,
+        ...(process.env.MCP_ALLOWED_HOSTS ?? "").split(",")
+      ]
+        .map((host) => host?.trim())
+        .filter((host): host is string => Boolean(host))
     })
   : createApp();
 
