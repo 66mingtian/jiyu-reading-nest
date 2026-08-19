@@ -13,8 +13,8 @@
 ## 2. 安装与验证
 
 ```bash
-git clone https://github.com/ice-star-blue/ss-reading-nest.git
-cd ss-reading-nest
+git clone https://github.com/66mingtian/jiyu-reading-nest.git
+cd jiyu-reading-nest
 corepack pnpm@10.15.1 install
 corepack pnpm@10.15.1 test
 corepack pnpm@10.15.1 typecheck
@@ -27,8 +27,8 @@ corepack pnpm@10.15.1 build
 
 ```bash
 corepack pnpm@10.15.1 --filter @ss/server exec wrangler login
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 create ss-reading-nest-db
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler r2 bucket create ss-reading-nest-sources
+corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 create jiyu-reading-nest-db
+corepack pnpm@10.15.1 --filter @ss/server exec wrangler r2 bucket create jiyu-reading-nest-sources
 ```
 
 把 D1 命令返回的 database ID 写入 `server/wrangler.jsonc`，替换：
@@ -58,7 +58,7 @@ corepack pnpm@10.15.1 --filter @ss/server exec wrangler secret put MCP_PATH_TOKE
 ## 5. 应用迁移
 
 ```bash
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 migrations apply ss-reading-nest-db --remote
+corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 migrations apply jiyu-reading-nest-db --remote
 ```
 
 当前 migration 会建立 `app_state` 表。真实数据由 Repository 以结构化 JSON 管理。
@@ -129,6 +129,7 @@ https://<your-worker>.<your-subdomain>.workers.dev/mcp/<your-token>/ios-v4
 - R2 bucket 为 private。
 - Git 中没有 `.env`、`.dev.vars`、D1/R2 导出或 Wrangler state。
 - `MCP_PATH_TOKEN` 只存在于 Cloudflare secret。
+- Workers invocation logs 与 automatic traces 均保持关闭，避免在遥测中保存带 token 的 URL。
 - 示例文本为原创或公共领域。
 - 没有把真实书名、正文、批注、聊天或阅读记录放入测试和文档。
 - 明白随机路径不是多用户认证，不把此部署作为公共共享服务。

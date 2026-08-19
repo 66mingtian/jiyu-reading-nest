@@ -8,7 +8,7 @@ const STORE = "reading-cache";
 const SYNC_JOB_STORE = "sync-jobs";
 
 export class IndexedDbReadingCache implements ReadingCacheAdapter {
-  constructor(private readonly databaseName = "ss-reading-nest") {}
+  constructor(private readonly databaseName = "jiyu-reading-nest") {}
 
   async isAvailable(): Promise<boolean> {
     return typeof indexedDB !== "undefined";

@@ -154,6 +154,9 @@ describe("privacy boundary", () => {
     expect(html).not.toContain(TEST_OBJECT_KEY);
     expect(html).not.toContain(TEST_MANIFEST_OBJECT_KEY);
     expect(html).toContain('unavailable:true,reason:"no-host"');
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow, noarchive");
   });
 
   it("documents the v0.3.34 cloud-first privacy model in README", async () => {
@@ -170,6 +173,13 @@ describe("privacy boundary", () => {
     expect(readme).toContain("同时删除本设备正文缓存");
     expect(readme).toContain("不生成 public URL 或 signed URL");
     expect(readme).toContain("remote smoke");
+  });
+
+  it("keeps token-bearing request URLs out of stored Cloudflare telemetry", async () => {
+    const wranglerConfig = await readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+
+    expect(wranglerConfig).toContain('"invocation_logs": false');
+    expect(wranglerConfig).toMatch(/"traces"\s*:\s*\{\s*"enabled"\s*:\s*false/);
   });
 });
 

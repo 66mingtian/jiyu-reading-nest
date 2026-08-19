@@ -29,7 +29,7 @@ export function createApp() {
     response.set("cache-control", "no-store");
     response.json({
       ok: true,
-      app: "冰冰和星星的小书房",
+      app: "明天和季遇的小书房",
       version: READING_NEST_APP_VERSION
     });
   });

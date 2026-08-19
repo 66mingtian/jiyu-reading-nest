@@ -285,8 +285,8 @@ describe("CloudSourceClient", () => {
     });
     const message = result.diagnostics.directUploadError ?? "";
 
-    expect(message).toContain("resourceVersion=app-v82-native-inline");
-    expect(message).toContain("appVersion=0.3.34");
+    expect(message).toContain("resourceVersion=app-v1-jiyu-private");
+    expect(message).toContain("appVersion=0.3.34-jiyu.1");
     expect(message).toContain("sourceEndpointBase=present");
     expect(message).toContain("uploadOrigin=https://worker.example.test");
     expect(message).toContain("uploadPath=/source/<token>/upload");
