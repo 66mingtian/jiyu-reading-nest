@@ -8,4 +8,11 @@ describe("Cloudflare Worker module boundary", () => {
     expect(workerSource).toContain("./mcp/server-factory.js");
     expect(workerSource).not.toContain("./mcp/create-server.js");
   });
+
+  it("never writes the token-bearing request path to application logs", async () => {
+    const workerSource = await readFile(new URL("./worker.ts", import.meta.url), "utf8");
+
+    expect(workerSource).not.toContain("path: url.pathname");
+    expect(workerSource).toContain("route");
+  });
 });

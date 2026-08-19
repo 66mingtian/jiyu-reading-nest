@@ -20,7 +20,7 @@ export default {
     if (route === "health") {
       return Response.json({
         ok: true,
-        app: "冰冰和星星的小书房",
+        app: "明天和季遇的小书房",
         version: READING_NEST_APP_VERSION
       }, {
         headers: { "cache-control": "no-store" }
@@ -86,7 +86,7 @@ export default {
         JSON.stringify({
           message: "MCP request failed",
           error: error instanceof Error ? error.message : String(error),
-          path: url.pathname
+          route
         })
       );
       return Response.json(

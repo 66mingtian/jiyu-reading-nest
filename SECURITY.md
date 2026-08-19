@@ -33,6 +33,11 @@ pnpm --filter @ss/server exec wrangler secret put MCP_PATH_TOKEN
 
 Keep the R2 bucket private. This project does not require or generate a public R2 URL.
 
+Because the personal access token is part of the request path, production Workers Logs must not
+store invocation URLs and automatic traces must remain disabled. The checked-in Wrangler config
+sets `observability.logs.invocation_logs` to `false` and `observability.traces.enabled` to `false`.
+Application error logs record only a route category and never `request.url` or `url.pathname`.
+
 ## Reporting a vulnerability
 
 Please open a GitHub security advisory instead of a public issue when the report contains an exploitable security weakness. Do not include real tokens, private source text, or production data in the report.

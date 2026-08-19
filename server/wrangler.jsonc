@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "ss-reading-nest",
+  "name": "jiyu-reading-nest",
   "main": "src/worker.ts",
   "compatibility_date": "2026-06-22",
   "compatibility_flags": ["nodejs_compat"],
@@ -12,7 +12,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "ss-reading-nest-db",
+      "database_name": "jiyu-reading-nest-db",
       "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
       "migrations_dir": "./migrations"
     }
@@ -20,7 +20,7 @@
   "r2_buckets": [
     {
       "binding": "SOURCES_BUCKET",
-      "bucket_name": "ss-reading-nest-sources"
+      "bucket_name": "jiyu-reading-nest-sources"
     }
   ],
   "rules": [
@@ -33,11 +33,11 @@
   "observability": {
     "enabled": true,
     "logs": {
+      "invocation_logs": false,
       "head_sampling_rate": 1
     },
     "traces": {
-      "enabled": true,
-      "head_sampling_rate": 0.1
+      "enabled": false
     }
   }
 }

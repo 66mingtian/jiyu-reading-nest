@@ -1,11 +1,14 @@
-# SxS Reading Nest / 小窝共读
+# Jiyu Reading Nest / 明天和季遇的小书房
+
+这是基于 [`ice-star-blue/ss-reading-nest`](https://github.com/ice-star-blue/ss-reading-nest)
+`v0.3.34` 制作的单用户私人 fork。保留上游 MIT 许可与原始署名，新增修改集中在个人化命名、独立 ChatGPT resource 身份和 token 日志防泄漏。
 
 一个运行在 ChatGPT 中的移动端优先私人阅读器。它把多书书架、阅读进度、划线想法、书签和“与 AI 共读当前页”连接在同一个 MCP App 中。
 
 公开仓库只包含源代码、测试和原创 demo，不包含维护者的线上地址、Cloudflare 资源标识、连接令牌、书籍正文、批注、聊天或阅读记录。
 
-> 当前冻结版本：`0.3.34`
-> 公开发布标签：`v0.3.34`
+> 上游冻结版本：`v0.3.34`
+> 当前 fork 版本：`0.3.34-jiyu.1`
 
 ## 设计目标
 
@@ -61,8 +64,8 @@ docs/    架构、部署、维护与学习资料
 要求：Node.js 22+、Corepack、pnpm 10.15.1。
 
 ```bash
-git clone https://github.com/ice-star-blue/ss-reading-nest.git
-cd ss-reading-nest
+git clone https://github.com/66mingtian/jiyu-reading-nest.git
+cd jiyu-reading-nest
 corepack pnpm@10.15.1 install
 corepack pnpm@10.15.1 test
 corepack pnpm@10.15.1 typecheck
@@ -91,10 +94,10 @@ corepack pnpm@10.15.1 dev
 
 ```bash
 corepack pnpm@10.15.1 --filter @ss/server exec wrangler login
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 create ss-reading-nest-db
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler r2 bucket create ss-reading-nest-sources
+corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 create jiyu-reading-nest-db
+corepack pnpm@10.15.1 --filter @ss/server exec wrangler r2 bucket create jiyu-reading-nest-sources
 corepack pnpm@10.15.1 --filter @ss/server exec wrangler secret put MCP_PATH_TOKEN
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 migrations apply ss-reading-nest-db --remote
+corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 migrations apply jiyu-reading-nest-db --remote
 corepack pnpm@10.15.1 deploy:cloudflare
 ```
 
