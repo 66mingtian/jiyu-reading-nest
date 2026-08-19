@@ -179,6 +179,22 @@ describe("source manifest schemas", () => {
     });
   });
 
+  it("accepts private filesystem storage for hosted single-user deployments", () => {
+    const result = setSourceManifestInputSchema.parse({
+      sessionId: "session-1",
+      sourceManifest: {
+        ...manifest,
+        cloudSync: {
+          enabled: true,
+          provider: "filesystem",
+          objectKey: "private/sources/source-1/source.txt"
+        }
+      }
+    });
+
+    expect(result.sourceManifest.cloudSync.provider).toBe("filesystem");
+  });
+
 
   it("requires objectKey for enabled novel cloud sync but not for disabled sync", () => {
     expect(

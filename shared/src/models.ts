@@ -83,7 +83,7 @@ export interface SyncedReadingState {
 
 export interface CloudSyncMetadata {
   enabled: boolean;
-  provider: "r2";
+  provider: "r2" | "filesystem";
   objectKey?: string;
   manifestObjectKey?: string;
   uploadedAt?: string;

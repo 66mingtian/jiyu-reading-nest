@@ -83,23 +83,47 @@ corepack pnpm@10.15.1 dev
 - MCP：`http://localhost:8787/mcp`
 - 健康检查：`http://localhost:8787/health`
 
-## 部署到自己的 Cloudflare
+## 推荐部署：Railway
+
+对单用户私人书房，Railway 路线只需要一个 Node 服务和一个私有持久卷，不依赖 Cloudflare OAuth：
+
+1. 在 Railway 选择 **Deploy from GitHub repo** 并连接本仓库。
+2. 给服务添加 Volume，Mount Path 设为 `/data`。
+3. 在 Variables 中添加自己生成并保存好的 `MCP_PATH_TOKEN`。
+4. 在 Networking 中生成域名并重新部署。
+
+仓库根目录的 `railway.json` 会执行生产构建、启动 MCP 服务并检查 `/health`。应用只有在 token 与持久卷都配置完成后才会通过健康检查，避免误用临时文件导致重启丢数据。
+
+Railway 连接地址：
+
+```text
+https://<your-domain>/mcp/<your-random-token>/ios-v4
+```
+
+完整手机操作步骤见 [Railway 部署指南](docs/RAILWAY_DEPLOYMENT.md)。
+
+## 备选部署：Cloudflare
 
 该项目默认是个人单用户部署。不要把维护者或其他人的 MCP 地址作为自己的后端。
 
-1. 创建 D1 数据库和私有 R2 bucket。
-2. 把 `server/wrangler.jsonc` 中的占位数据库 ID 改成自己的值。
-3. 创建随机 `MCP_PATH_TOKEN`，仅通过 Wrangler secret 保存。
-4. 应用迁移并部署 Worker。
+手机上推荐使用仓库自带的 GitHub Actions 工作流：
+
+1. 在 Cloudflare 创建一个只限本账户的 API token，并复制 Account ID。
+2. 在 GitHub 仓库的 Actions secrets 中添加 `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN` 和随机的 `MCP_PATH_TOKEN`。
+3. 打开 **Actions → Deploy to Cloudflare → Run workflow**。
+
+工作流会先验证项目，再自动创建或复用 D1 数据库与私有 R2 bucket、部署 Worker、应用迁移并检查健康状态。密钥不会写进代码仓库。
+
+如果使用电脑命令行，也可以直接运行：
 
 ```bash
 corepack pnpm@10.15.1 --filter @ss/server exec wrangler login
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 create jiyu-reading-nest-db
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler r2 bucket create jiyu-reading-nest-sources
 corepack pnpm@10.15.1 --filter @ss/server exec wrangler secret put MCP_PATH_TOKEN
-corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 migrations apply jiyu-reading-nest-db --remote
 corepack pnpm@10.15.1 deploy:cloudflare
+corepack pnpm@10.15.1 --filter @ss/server exec wrangler d1 migrations apply jiyu-reading-nest-db --remote
 ```
+
+首次部署时，Wrangler 会按配置中的名称自动创建缺少的 D1 与 R2 资源。
 
 连接地址由你自己的 Worker origin 和私密 token 组成：
 
@@ -113,14 +137,14 @@ https://<your-worker>.<your-subdomain>.workers.dev/mcp/<your-random-token>
 https://<your-worker>.<your-subdomain>.workers.dev/mcp/<your-random-token>/ios-v4
 ```
 
-不要把实际地址发到 issue、日志或截图里。完整步骤见 [开源部署指南](docs/OPEN_SOURCE_DEPLOYMENT.md)。ChatGPT App/MCP 的官方概念可参考 [OpenAI MCP server 指南](https://developers.openai.com/apps-sdk/build/mcp-server/) 与 [ChatGPT UI 指南](https://developers.openai.com/apps-sdk/build/chatgpt-ui/)。
+不要把实际地址或 token 发到 issue、聊天、日志或截图里。完整步骤见 [开源部署指南](docs/OPEN_SOURCE_DEPLOYMENT.md)。ChatGPT App/MCP 的官方概念可参考 [OpenAI MCP server 指南](https://developers.openai.com/apps-sdk/build/mcp-server/) 与 [ChatGPT UI 指南](https://developers.openai.com/apps-sdk/build/chatgpt-ui/)。
 
 ## 数据与隐私
 
 | 位置 | 保存内容 | 性质 |
 | --- | --- | --- |
-| D1 | session、进度、偏好、批注、书签、阅读记录、source metadata | 私有结构化数据 |
-| R2 | 导入的小说正文和 manifest | 必须保持 private |
+| D1 或 Railway Volume | session、进度、偏好、批注、书签、阅读记录、source metadata | 私有结构化数据 |
+| R2 或 Railway Volume | 导入的小说正文和 manifest | 必须保持 private |
 | IndexedDB | 当前设备的正文与分段缓存 | 可重建缓存 |
 | ChatGPT 上下文 | 用户主动共读时所需的当前页与想法 | 最小必要范围 |
 

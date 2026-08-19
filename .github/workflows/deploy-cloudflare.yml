@@ -1,0 +1,134 @@
+name: Deploy to Cloudflare
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@10.15.1 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Run type checks
+        run: pnpm typecheck
+
+      - name: Build production bundles
+        run: pnpm build
+
+      - name: Validate deployment secrets
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          MCP_PATH_TOKEN: ${{ secrets.MCP_PATH_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for secret_name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN MCP_PATH_TOKEN; do
+            if [[ -z "${!secret_name:-}" ]]; then
+              echo "::error::Missing GitHub Actions secret: ${secret_name}"
+              missing=1
+            fi
+          done
+          if [[ "${missing}" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Prepare Worker secret file
+        id: worker_secrets
+        env:
+          MCP_PATH_TOKEN: ${{ secrets.MCP_PATH_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_file="${RUNNER_TEMP}/jiyu-reading-nest-secrets.json"
+          umask 077
+          SECRET_FILE="${secret_file}" node <<'NODE'
+          const { writeFileSync } = require("node:fs");
+          const token = process.env.MCP_PATH_TOKEN;
+          if (!token) throw new Error("MCP_PATH_TOKEN is empty");
+          writeFileSync(process.env.SECRET_FILE, JSON.stringify({ MCP_PATH_TOKEN: token }));
+          NODE
+          echo "path=${secret_file}" >> "${GITHUB_OUTPUT}"
+
+      - name: Deploy Worker and provision bindings
+        id: deploy
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SECRET_FILE: ${{ steps.worker_secrets.outputs.path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_log="${RUNNER_TEMP}/wrangler-deploy.log"
+          pnpm --filter @ss/server exec wrangler deploy --secrets-file "${SECRET_FILE}" | tee "${deploy_log}"
+
+          worker_url="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "${deploy_log}" | tail -n 1 || true)"
+          if [[ -n "${worker_url}" ]]; then
+            echo "worker_url=${worker_url}" >> "${GITHUB_OUTPUT}"
+            {
+              echo "### Cloudflare deployment"
+              echo
+              echo "- Worker: ${worker_url}"
+            } >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "::warning::Deployment succeeded, but the workers.dev URL was not present in Wrangler output. Open the Cloudflare dashboard to copy it."
+          fi
+
+      - name: Apply D1 migrations
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm --filter @ss/server exec wrangler d1 migrations apply jiyu-reading-nest-db --remote
+
+      - name: Verify Worker health
+        if: steps.deploy.outputs.worker_url != ''
+        env:
+          WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          health_file="${RUNNER_TEMP}/jiyu-reading-nest-health.json"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 3 \
+            --output "${health_file}" "${WORKER_URL}/health"
+          HEALTH_FILE="${health_file}" node <<'NODE'
+          const { readFileSync } = require("node:fs");
+          const health = JSON.parse(readFileSync(process.env.HEALTH_FILE, "utf8"));
+          if (health.ok !== true) throw new Error("Worker health check did not return ok: true");
+          NODE
+
+      - name: Remove temporary Worker secret file
+        if: always()
+        env:
+          SECRET_FILE: ${{ steps.worker_secrets.outputs.path }}
+        shell: bash
+        run: |
+          if [[ -n "${SECRET_FILE:-}" && -f "${SECRET_FILE}" ]]; then
+            rm -f -- "${SECRET_FILE}"
+          fi
