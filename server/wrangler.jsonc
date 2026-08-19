@@ -13,7 +13,6 @@
     {
       "binding": "DB",
       "database_name": "jiyu-reading-nest-db",
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
       "migrations_dir": "./migrations"
     }
   ],

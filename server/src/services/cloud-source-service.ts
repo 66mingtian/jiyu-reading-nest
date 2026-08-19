@@ -3,6 +3,7 @@ import {
   DEFAULT_SESSION_PREFERENCES,
   NOVEL_SEGMENTATION_VERSION,
   type ReadingPosition,
+  type CloudSyncMetadata,
   splitNovelText,
   splitNovelTextForVersion,
   type ReadingSession,
@@ -35,7 +36,8 @@ export class CloudSourceService {
   constructor(
     private readonly repository: ReadingRepository,
     private readonly storage: SourceObjectStorage,
-    private readonly deps: Dependencies = defaultDependencies
+    private readonly deps: Dependencies = defaultDependencies,
+    private readonly storageProvider: CloudSyncMetadata["provider"] = "r2"
   ) {}
 
   async uploadNovelSource(input: {
@@ -59,7 +61,7 @@ export class CloudSourceService {
       paragraphCount: splitNovelText(normalizedText).length,
       cloudSync: {
         enabled: true,
-        provider: "r2",
+        provider: this.storageProvider,
         objectKey,
         manifestObjectKey,
         uploadedAt: this.deps.now().toISOString(),
